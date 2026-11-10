@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>지역별 여행지 카드북</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', sans-serif; background-color: #f8f9fa; color: #333; padding: 20px; }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { font-size: 1.8rem; margin-bottom: 8px; color: #1a73e8; }
+    .controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 30px; }
+    select { padding: 10px 16px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px; outline: none; }
+    #status-msg { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.95rem; }
+    
+    /* 관광지 카드 그리드 */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+      transition: transform 0.2s;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background-color: #e9ecef;
+    }
+    .card-content { padding: 16px; }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
+    .card-addr { font-size: 0.85rem; color: #666; line-height: 1.4; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>지역별 여행지 카드북</h1>
+    <p>지역을 선택하면 여행지 목록을 조회하고 마지막 선택 지역을 저장합니다.</p>
+  </header>
+
+  <section class="controls">
+    <select id="area-select">
+      <option value="">-- 지역을 선택하세요 --</option>
+      <option value="1">서울</option>
+      <option value="6">부산</option>
+      <option value="4">대구</option>
+      <option value="2">인천</option>
+      <option value="5">광주</option>
+      <option value="3">대전</option>
+      <option value="7">울산</option>
+      <option value="8">세종</option>
+      <option value="31">경기도</option>
+      <option value="32">강원도</option>
+      <option value="39">제주도</option>
+    </select>
+  </section>
+
+  <div id="status-msg"></div>
+  <main id="card-container" class="card-grid" style="display: none;"></main>
+
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // 1. Firebase 구성 설정 (본인의 Firebase 콘솔 설정값으로 교체)
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 2. 공공데이터포털 TourAPI 일반 인증키 (Encoding 또는 Decoding 키 중 동작하는 키 입력)
+    const TOUR_API_KEY = "YOUR_TOUR_API_ENCODING_OR_DECODING_KEY";
+
+    // 3. 식별자 설정 (단일 사용자 식별을 위해 로컬스토리지 UUID 사용)
+    let userKey = localStorage.getItem("travel_user_id");
+    if (!userKey) {
+      userKey = "user_" + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem("travel_user_id", userKey);
+    }
+
+    const selectEl = document.getElementById("area-select");
+    const containerEl = document.getElementById("card-container");
+    const statusMsgEl = document.getElementById("status-msg");
+
+    // 공공데이터 API 호출 및 렌더링 함수
+    async function loadTourData(areaCode) {
+      statusMsgEl.innerText = "관광 정보를 불러오는 중입니다...";
+      const endpoint = `https://apis.data.go.kr/B551011/KorService1/areaBasedList1?serviceKey=${TOUR_API_KEY}&numOfRows=12&pageNo=1&MobileOS=ETC&MobileApp=CardBook&_type=json&areaCode=${areaCode}`;
+
+      try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        const items = data?.response?.body?.items?.item;
+
+        if (!items || items.length === 0) {
+          statusMsgEl.innerText = "조회된 관광지 데이터가 없습니다.";
+          containerEl.style.display = "none";
+          return;
+        }
+
+        renderCards(items);
+        statusMsgEl.innerText = "";
+        containerEl.style.display = "grid";
+      } catch (error) {
+        console.error("API Fetch Error:", error);
+        statusMsgEl.innerText = "관광지 데이터를 가져오는 중 오류가 발생했습니다.";
+      }
+    }
+
+    // 카드 렌더링 함수
+    function renderCards(items) {
+      containerEl.innerHTML = "";
+      items.forEach(item => {
+        // 대표 이미지가 없을 경우 대체 이미지 지정
+        const imageUrl = item.firstimage || item.firstimage2 || "https://via.placeholder.com/300x180?text=No+Image";
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <img src="${imageUrl}" alt="${item.title}" loading="lazy">
+          <div class="card-content">
+            <h2 class="card-title">${item.title}</h2>
+            <p class="card-addr">${item.addr1 || "주소 정보 없음"}</p>
+          </div>
+        `;
+        containerEl.appendChild(card);
+      });
+    }
+
+    // Firebase에 선택 지역 저장/업데이트
+    async function saveUserArea(areaCode) {
+      try {
+        await set(ref(db, `users/${userKey}`), {
+          selectedArea: areaCode,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firebase Save Error:", err);
+      }
+    }
+
+    // 초기 실행: Firebase 데이터 조회 및 첫 화면 렌더링
+    async function initPage() {
+      try {
+        const snapshot = await get(ref(db, `users/${userKey}/selectedArea`));
+        if (snapshot.exists()) {
+          const savedArea = snapshot.val();
+          selectEl.value = savedArea;
+          loadTourData(savedArea);
+        } else {
+          // 저장된 기록이 없는 경우 목록 숨김 유지
+          containerEl.style.display = "none";
+          statusMsgEl.innerText = "지역을 선택하면 관광지가 표시됩니다.";
+        }
+      } catch (err) {
+        console.error("Firebase Read Error:", err);
+      }
+    }
+
+    // 지역 선택 변경 이벤트
+    selectEl.addEventListener("change", (e) => {
+      const areaCode = e.target.value;
+      if (!areaCode) {
+        containerEl.style.display = "none";
+        statusMsgEl.innerText = "지역을 선택해주세요.";
+        return;
+      }
+      loadTourData(areaCode);
+      saveUserArea(areaCode);
+    });
+
+    initPage();
+  </script>
+</body>
+</html>
