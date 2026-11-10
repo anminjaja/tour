@@ -1,15 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// 1. Firebase 구성 설정 (Firebase 콘솔 발급 키로 교체)
+// 1. Firebase 구성 설정
 const firebaseConfig = {
-   apiKey: "AIzaSyCxMuz_dLoXTkPFIhIWFjMpakE8w6G1eGU",
+  apiKey: "AIzaSyCxMuz_dLoXTkPFIhIWFjMpakE8w6G1eGU",
   authDomain: "myproject-894cb.firebaseapp.com",
   projectId: "myproject-894cb",
   storageBucket: "myproject-894cb.firebasestorage.app",
   messagingSenderId: "931629057270",
   appId: "1:931629057270:web:a921999be0988a905818d7",
-  databaseURL: "https://myproject-894cb-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  databaseURL: "https://myproject-894cb-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -18,7 +18,7 @@ const db = getDatabase(app);
 // 2. 공공데이터포털 TourAPI 일반 인증키
 const TOUR_API_KEY = "bd21b12db0e288c3985b09ce34dad04c43e57ea2693be743697926278f106d4d";
 
-// 3. 브라우저 로컬 식별자 생성/조회
+// 3. 브라우저 로컬 식별자 생성 및 조회
 let userKey = localStorage.getItem("travel_user_id");
 if (!userKey) {
   userKey = "user_" + Math.random().toString(36).substring(2, 10);
@@ -33,6 +33,7 @@ const statusMsgEl = document.getElementById("status-msg");
 async function loadTourData(areaCode) {
   statusMsgEl.innerText = "관광 정보를 불러오는 중입니다...";
   const endpoint = `https://apis.data.go.kr/B551011/KorService2/areaBasedList2?serviceKey=${TOUR_API_KEY}&numOfRows=12&pageNo=1&MobileOS=ETC&MobileApp=CardBook&_type=json&areaCode=${areaCode}`;
+  
   try {
     const response = await fetch(endpoint);
     const data = await response.json();
@@ -71,7 +72,7 @@ function renderCards(items) {
   });
 }
 
-// Firebase 저장 및 지속 업데이트
+// Firebase에 선택 지역 저장 및 지속 업데이트
 async function saveUserArea(areaCode) {
   try {
     await set(ref(db, `users/${userKey}`), {
@@ -92,6 +93,7 @@ async function initPage() {
       selectEl.value = savedArea;
       loadTourData(savedArea);
     } else {
+      // 저장된 데이터가 없을 경우 숨김 상태 유지
       containerEl.style.display = "none";
       statusMsgEl.innerText = "지역을 선택하면 관광지가 표시됩니다.";
     }
@@ -112,4 +114,5 @@ selectEl.addEventListener("change", (e) => {
   saveUserArea(areaCode);
 });
 
+// 페이지 초기화 실행
 initPage();
