@@ -3,20 +3,20 @@ import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/1
 
 // 1. Firebase 구성 설정 (Firebase 콘솔 발급 키로 교체)
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+   apiKey: "AIzaSyCxMuz_dLoXTkPFIhIWFjMpakE8w6G1eGU",
+  authDomain: "myproject-894cb.firebaseapp.com",
+  projectId: "myproject-894cb",
+  storageBucket: "myproject-894cb.firebasestorage.app",
+  messagingSenderId: "931629057270",
+  appId: "1:931629057270:web:a921999be0988a905818d7"
+  databaseURL: "https://myproject-894cb-default-rtdb.asia-southeast1.firebasedatabase.app/",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // 2. 공공데이터포털 TourAPI 일반 인증키
-const TOUR_API_KEY = "YOUR_TOUR_API_ENCODING_OR_DECODING_KEY";
+const TOUR_API_KEY = "bd21b12db0e288c3985b09ce34dad04c43e57ea2693be743697926278f106d4d";
 
 // 3. 브라우저 로컬 식별자 생성/조회
 let userKey = localStorage.getItem("travel_user_id");
@@ -32,8 +32,7 @@ const statusMsgEl = document.getElementById("status-msg");
 // 공공데이터 TourAPI 호출 및 목록 렌더링
 async function loadTourData(areaCode) {
   statusMsgEl.innerText = "관광 정보를 불러오는 중입니다...";
-  const endpoint = `https://apis.data.go.kr/B551011/KorService1/areaBasedList1?serviceKey=${TOUR_API_KEY}&numOfRows=12&pageNo=1&MobileOS=ETC&MobileApp=CardBook&_type=json&areaCode=${areaCode}`;
-
+  const endpoint = `https://apis.data.go.kr/B551011/KorService2/areaBasedList2?serviceKey=${TOUR_API_KEY}&numOfRows=12&pageNo=1&MobileOS=ETC&MobileApp=CardBook&_type=json&areaCode=${areaCode}`;
   try {
     const response = await fetch(endpoint);
     const data = await response.json();
